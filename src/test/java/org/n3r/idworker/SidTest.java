@@ -11,7 +11,7 @@ public class SidTest {
         System.out.println(Sid.next());
         System.out.println(Sid.nextShort());
         for (int i = 0; i < 10000; ++i) {
-            assertThat(Sid.next().length(), is(20));
+            assertThat(Sid.next().length(), is(21));
             assertThat(Sid.nextShort().length(), is(16));
         }
     }
