@@ -61,7 +61,7 @@ public class HttpReq {
                 return null;
             }
         } catch (Exception e) {
-            logger.error("exec error", e);
+            logger.error("exec error {}", e.getMessage());
             return null;
         } finally {
             if (http != null) http.disconnect();
