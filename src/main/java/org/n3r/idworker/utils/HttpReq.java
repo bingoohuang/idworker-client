@@ -44,7 +44,9 @@ public class HttpReq {
     public String exec() {
         HttpURLConnection http = null;
         try {
-            http = (HttpURLConnection) new URL(baseUrl + req + (params.length() > 0 ? ("?" + params) : "")).openConnection();
+            http = (HttpURLConnection) new URL(baseUrl
+                    + (req == null ? "" : req)
+                    + (params.length() > 0 ? ("?" + params) : "")).openConnection();
             http.setRequestProperty("Accept-Charset", "UTF-8");
             HttpURLConnection.setFollowRedirects(false);
             http.setConnectTimeout(5 * 1000);
