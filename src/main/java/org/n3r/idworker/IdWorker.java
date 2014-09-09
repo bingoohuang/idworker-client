@@ -83,4 +83,8 @@ public class IdWorker {
     public long getLastMillis() {
         return lastMillis;
     }
+
+    public long getWorkerId() {
+        return workerId;
+    }
 }

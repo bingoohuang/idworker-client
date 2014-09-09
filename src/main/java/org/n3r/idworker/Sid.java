@@ -7,7 +7,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class Sid {
-    private static WorkerIdStatrategy workerIdStrategy;
+    private static WorkerIdStrategy workerIdStrategy;
     private static IdWorker idWorker;
 
     static {
@@ -15,7 +15,7 @@ public class Sid {
     }
 
 
-    public static synchronized void configure(WorkerIdStatrategy custom) {
+    public static synchronized void configure(WorkerIdStrategy custom) {
         if (workerIdStrategy != null) workerIdStrategy.release();
         workerIdStrategy = custom;
         idWorker = new IdWorker(workerIdStrategy.availableWorkerId()) {

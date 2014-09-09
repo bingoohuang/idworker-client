@@ -1,9 +1,8 @@
 package org.n3r.idworker.strategy;
 
-import org.n3r.idworker.WorkerIdStatrategy;
+import org.n3r.idworker.WorkerIdStrategy;
 import org.n3r.idworker.utils.HttpReq;
 import org.n3r.idworker.utils.Ip;
-import org.n3r.idworker.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,17 +11,17 @@ import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.Random;
 
-public class DefaultWorkerIdStrategy implements WorkerIdStatrategy {
+public class DefaultWorkerIdStrategy implements WorkerIdStrategy {
     static long workerIdBits = 10L;
     static long maxWorkerId = -1L ^ (-1L << workerIdBits);
     static Random random = new SecureRandom();
 
-    public static final WorkerIdStatrategy instance = new DefaultWorkerIdStrategy();
+    public static final WorkerIdStrategy instance = new DefaultWorkerIdStrategy();
 
     private final String idWorkerServerUrl = "http://id.worker.server:18001";
 
     String userName = System.getProperty("user.name");
-    File dir = new File(System.getProperty("user.home") + File.separator + ".idworkers");
+    File dir = new File(userName+ File.separator + ".idworkers");
     String ipDotUsername = Ip.ip + "." + userName;
     String ipudotlock = ipDotUsername + ".lock.";
     int workerIdIndex = ipudotlock.length();
@@ -39,18 +38,8 @@ public class DefaultWorkerIdStrategy implements WorkerIdStatrategy {
 
         workerId = findAvailWorkerId();
         if (workerId >= 0) {
-            Runtime.getRuntime().addShutdownHook(new Thread() {
-                @Override
-                public void run() {
-                    fileLock.destroy();
-                }
-            });
-            new Thread() {
-                @Override
-                public void run() {
-                    syncWithWorkerIdServer();
-                }
-            }.start();
+            destroyFileLockWhenShutdown();
+            startSyncThread();
         } else {
             syncWithWorkerIdServer();
             workerId = findAvailWorkerId();
@@ -67,6 +56,24 @@ public class DefaultWorkerIdStrategy implements WorkerIdStatrategy {
             logger.warn("the world may be ended!");
             throw new RuntimeException("the world may be ended");
         }
+    }
+
+    private void destroyFileLockWhenShutdown() {
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                fileLock.destroy();
+            }
+        });
+    }
+
+    private void startSyncThread() {
+        new Thread() {
+            @Override
+            public void run() {
+                syncWithWorkerIdServer();
+            }
+        }.start();
     }
 
     private long increaseWithWorkerIdServer() {

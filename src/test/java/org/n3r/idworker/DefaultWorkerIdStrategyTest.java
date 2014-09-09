@@ -23,7 +23,7 @@ public class DefaultWorkerIdStrategyTest {
 
     @Test
     public void test1() {
-        WorkerIdStatrategy instance = DefaultWorkerIdStrategy.instance;
+        WorkerIdStrategy instance = DefaultWorkerIdStrategy.instance;
         instance.initialize();
         long wid = instance.availableWorkerId();
         assertTrue(wid >= 0);

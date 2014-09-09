@@ -3,14 +3,14 @@ package org.n3r.idworker;
 import org.n3r.idworker.strategy.DefaultWorkerIdStrategy;
 
 public class Id {
-    private static WorkerIdStatrategy workerIdStrategy;
+    private static WorkerIdStrategy workerIdStrategy;
     private static IdWorker idWorker;
 
     static {
         configure(DefaultWorkerIdStrategy.instance);
     }
 
-    public static synchronized void configure(WorkerIdStatrategy custom) {
+    public static synchronized void configure(WorkerIdStrategy custom) {
         if (workerIdStrategy == custom) return;
 
         if (workerIdStrategy != null) workerIdStrategy.release();
@@ -21,5 +21,9 @@ public class Id {
 
     public static long next() {
         return idWorker.nextId();
+    }
+
+    public static long getWorkerId() {
+        return idWorker.getWorkerId();
     }
 }
