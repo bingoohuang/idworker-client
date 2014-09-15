@@ -3,26 +3,21 @@ package org.n3r.idworker;
 import org.n3r.idworker.strategy.DefaultCodeStrategy;
 
 public class Code {
-    private static CodeStrategy codeStrategy;
+    private static CodeStrategy strategy;
 
     static {
-        configure(DefaultCodeStrategy.instance);
+        CodeStrategy strategy = new DefaultCodeStrategy();
+        strategy.init();
+        configure(strategy);
     }
 
     public static synchronized void configure(CodeStrategy custom) {
-        if (codeStrategy == custom) return;
-        if (codeStrategy != null) codeStrategy.release();
+        if (strategy == custom) return;
+        if (strategy != null) strategy.release();
 
-        codeStrategy = custom;
+        strategy = custom;
     }
 
-    public static synchronized int nextRandomCode() {
-        return codeStrategy.nextRandomCode();
-    }
-
-    public static int prefix() {
-        return codeStrategy.prefix();
-    }
 
     /**
      * Next Unique code.
@@ -32,13 +27,9 @@ public class Code {
      * @return unique string code.
      */
     public static String nextCode() {
-        return nextCode("-");
-    }
+        int prefix = strategy.prefix();
+        if (prefix == 0) return Id.getWorkerId() + "-" + strategy.nextRandomCode();
 
-    public static String nextCode(String separate) {
-        int prefix = codeStrategy.prefix();
-        if (prefix == 0) return Id.getWorkerId() + separate + nextRandomCode();
-
-        return Id.getWorkerId() + separate + prefix() + separate + nextRandomCode();
+        return String.format("%d-%d-%d", Id.getWorkerId(), prefix, strategy.nextRandomCode());
     }
 }
