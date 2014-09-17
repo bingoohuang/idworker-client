@@ -1,7 +1,6 @@
 package org.n3r.idworker.strategy;
 
 import org.n3r.idworker.RandomCodeStrategy;
-import org.n3r.idworker.bloomfilter.ScalableBloomFilter;
 import org.n3r.idworker.utils.Serializes;
 import org.n3r.idworker.utils.Utils;
 import org.slf4j.Logger;
@@ -13,16 +12,18 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.ArrayDeque;
+import java.util.BitSet;
 import java.util.Queue;
 
 public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
     static final int MAX_PREFIX_INDEX = Integer.MAX_VALUE;
+    public static final int MAX_BITS = 16777216;
 
     Logger log = LoggerFactory.getLogger(DefaultRandomCodeStrategy.class);
 
     File idWorkerHome = Utils.createIdWorkerHome();
     volatile FileLock fileLock;
-    ScalableBloomFilter codesFilter;
+    BitSet codesFilter;
     volatile FileOutputStream fileOutputStream;
 
     int prefixIndex = -1;
@@ -90,10 +91,10 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
         codesFilter = Serializes.readObject(codePrefixIndex);
         if (codesFilter == null) {
             log.info("create new bloom filter");
-            codesFilter = new ScalableBloomFilter();
+            codesFilter = new BitSet(MAX_BITS); // 2^24
         } else {
-            int size = codesFilter.size();
-            if (size > Integer.MAX_VALUE / 2) {
+            int size = codesFilter.cardinality();
+            if (size > 16000000) {
                 log.warn("bloom filter is already full");
                 return false;
             }
@@ -128,8 +129,6 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
         return prefixIndex;
     }
 
-    static final int MAX_RETRY_TIMES = 100;
-    static final int WARN_RETRY_TIMES = 5;
     static final int CACHE_CODES_NUM = 1000;
 
     SecureRandom secureRandom = new SecureRandom();
@@ -160,29 +159,45 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
     }
 
     private int generateOne() {
-        int retryTimes = -1;
         while (true) {
-            if (++retryTimes == MAX_RETRY_TIMES) {
-                init();
-                retryTimes = 0;
-            }
-
             boolean found = true;
             int code = -1;
 
             for (int size = minRandomSize; found && size <= maxRandomSize; ++size) {
                 code = secureRandom.nextInt(max(size));
-                found = codesFilter.add(code);
+                found = contains(code);
             }
 
-            if (!found) {
-                if (retryTimes > WARN_RETRY_TIMES)
-                    log.debug("get available code {} with {} times with prefix {}", code, retryTimes, prefix());
+            code = !found ? add(code) : tryFindAvailableCode(code);
+            if (code >= 0) return code;
 
-                return code;
-            }
+            init();
         }
     }
+
+    private int tryFindAvailableCode(int code) {
+        for (int i = code + 1; i < max(maxRandomSize); ++i) {
+            if (contains(i)) continue;
+            return add(i);
+        }
+
+        for (int i = 0; i < code; ++i) {
+            if (contains(i)) continue;
+            return add(i);
+        }
+
+        return -1;
+    }
+
+    private int add(int code) {
+        codesFilter.set(code);
+        return code;
+    }
+
+    private boolean contains(int code) {
+        return codesFilter.get(code);
+    }
+
 
     private int max(int size) {
         switch (size) {
