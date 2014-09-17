@@ -3,6 +3,7 @@ package org.n3r.idworker.strategy;
 import org.n3r.idworker.WorkerIdStrategy;
 import org.n3r.idworker.utils.HttpReq;
 import org.n3r.idworker.utils.Ip;
+import org.n3r.idworker.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +22,7 @@ public class DefaultWorkerIdStrategy implements WorkerIdStrategy {
     private final String idWorkerServerUrl = "http://id.worker.server:18001";
 
     String userName = System.getProperty("user.name");
-    File dir = new File(userName+ File.separator + ".idworkers");
+
     String ipDotUsername = Ip.ip + "." + userName;
     String ipudotlock = ipDotUsername + ".lock.";
     int workerIdIndex = ipudotlock.length();
@@ -33,9 +34,6 @@ public class DefaultWorkerIdStrategy implements WorkerIdStrategy {
 
 
     private void init() {
-        dir.mkdirs();
-        if (!dir.exists()) throw new RuntimeException("create id workers dir fail " + dir);
-
         workerId = findAvailWorkerId();
         if (workerId >= 0) {
             destroyFileLockWhenShutdown();
@@ -109,7 +107,8 @@ public class DefaultWorkerIdStrategy implements WorkerIdStrategy {
     private long checkAvail(long wid) {
         long availWorkerId = -1L;
         try {
-            new File(dir, ipudotlock + String.format("%04d", wid)).createNewFile();
+            File idWorkerHome = Utils.createIdWorkerHome();
+            new File(idWorkerHome, ipudotlock + String.format("%04d", wid)).createNewFile();
             availWorkerId = findAvailWorkerId();
         } catch (IOException e) {
             logger.warn("checkAvail error", e);
@@ -125,9 +124,10 @@ public class DefaultWorkerIdStrategy implements WorkerIdStrategy {
         if (syncIds == null || syncIds.trim().isEmpty()) return;
 
         String[] syncIdsArr = syncIds.split(",");
+        File idWorkerHome = Utils.createIdWorkerHome();
         for (String syncId : syncIdsArr) {
             try {
-                new File(dir, ipudotlock + syncId).createNewFile();
+                new File(idWorkerHome, ipudotlock + syncId).createNewFile();
             } catch (IOException e) {
                 logger.warn("create workerid lock file error", e);
             }
@@ -136,7 +136,8 @@ public class DefaultWorkerIdStrategy implements WorkerIdStrategy {
 
     private String buildWorkerIdsOfCurrentIp() {
         StringBuilder sb = new StringBuilder();
-        for (File lockFile : dir.listFiles()) {
+        File idWorkerHome = Utils.createIdWorkerHome();
+        for (File lockFile : idWorkerHome.listFiles()) {
             // check the format like 10.142.1.151.lock.0001
             if (!lockFile.getName().startsWith(ipudotlock)) continue;
 
@@ -157,7 +158,9 @@ public class DefaultWorkerIdStrategy implements WorkerIdStrategy {
      * @return -1 when N/A
      */
     private long findAvailWorkerId() {
-        for (File lockFile : dir.listFiles()) {
+        File idWorkerHome = Utils.createIdWorkerHome();
+
+        for (File lockFile : idWorkerHome.listFiles()) {
             // check the format like 10.142.1.151.lock.0001
             if (!lockFile.getName().startsWith(ipudotlock)) continue;
 

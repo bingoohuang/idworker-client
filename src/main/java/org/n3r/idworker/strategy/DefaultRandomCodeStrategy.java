@@ -1,8 +1,9 @@
 package org.n3r.idworker.strategy;
 
-import org.n3r.idworker.CodeStrategy;
-import org.n3r.idworker.utils.BloomFilter;
+import org.n3r.idworker.RandomCodeStrategy;
+import org.n3r.idworker.bloomfilter.ScalableBloomFilter;
 import org.n3r.idworker.utils.Serializes;
+import org.n3r.idworker.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,56 +13,61 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.ArrayDeque;
-import java.util.BitSet;
 import java.util.Queue;
 
-public class DefaultCodeStrategy implements CodeStrategy {
+public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
     static final int MAX_PREFIX_INDEX = Integer.MAX_VALUE;
-    Logger log = LoggerFactory.getLogger(DefaultCodeStrategy.class);
 
-    File dir = new File(System.getProperty("user.home") + File.separator + ".idworkers");
-    FileLock fileLock;
-    BloomFilter codesFilter;
-    FileOutputStream fileOutputStream;
+    Logger log = LoggerFactory.getLogger(DefaultRandomCodeStrategy.class);
 
-    int prefixIndex;
+    File idWorkerHome = Utils.createIdWorkerHome();
+    volatile FileLock fileLock;
+    ScalableBloomFilter codesFilter;
+    volatile FileOutputStream fileOutputStream;
+
+    int prefixIndex = -1;
     File codePrefixIndex;
 
     int minRandomSize = 5;
     int maxRandomSize = 10;
 
+    public DefaultRandomCodeStrategy() {
+        destroyFileLockWhenShutdown();
+    }
+
     @Override
     public void init() {
         release();
 
-        prefixIndex = -1;
         while (++prefixIndex < MAX_PREFIX_INDEX) {
-            if (tryUsePrefix(prefixIndex)) break;
+            if (tryUsePrefix()) break;
         }
 
         if (prefixIndex == MAX_PREFIX_INDEX)
             throw new RuntimeException("all prefixes are used up, the world maybe ends!");
     }
 
-    public void setMinRandomSize(int minRandomSize) {
+    public DefaultRandomCodeStrategy setMinRandomSize(int minRandomSize) {
         this.minRandomSize = minRandomSize;
+        return this;
     }
 
-    public void setMaxRandomSize(int maxRandomSize) {
+    public DefaultRandomCodeStrategy setMaxRandomSize(int maxRandomSize) {
         this.maxRandomSize = maxRandomSize;
+        return this;
     }
 
-    protected boolean tryUsePrefix(int prefix) {
-        codePrefixIndex = new File(dir, "code.prefix." + (prefix));
+    protected boolean tryUsePrefix() {
+        codePrefixIndex = new File(idWorkerHome, "code.prefix." + prefixIndex);
 
         if (!createPrefixIndexFile()) return false;
         if (!createFileLock()) return false;
-        if (!createCodeFilter()) return false;
+        if (!createBloomFilter()) return false;
 
-        log.info("get available prefix index {}", prefix);
+        log.info("get available prefix index {}", prefixIndex);
 
         createFileOut();
-        destroyFileLockWhenShutdown();
+
         return true;
     }
 
@@ -80,26 +86,18 @@ public class DefaultCodeStrategy implements CodeStrategy {
         }
     }
 
-    private boolean createCodeFilter() {
-        BitSet bitSet = Serializes.readObject(codePrefixIndex);
-        if (bitSet == null || bitSet.isEmpty()) {
+    private boolean createBloomFilter() {
+        codesFilter = Serializes.readObject(codePrefixIndex);
+        if (codesFilter == null) {
             log.info("create new bloom filter");
-            codesFilter = new BloomFilter(
-                    2.0 /* the number of bits used per element */,
-                    8388608 /* 2^23, the expected number of elements the filter will contain */,
-                    1 /* the number of hash functions used */);
-
-        } else if (bitSet.cardinality() >= 2000000000) {
-            log.info("old bloom filter is full with cardinality {}", bitSet.cardinality());
-            return false;
+            codesFilter = new ScalableBloomFilter();
         } else {
-            log.info("rebuild new bloom filter with cardinality {}", bitSet.cardinality());
-
-            codesFilter = new BloomFilter(
-                    2.0 /* number of bits used per element */,
-                    8388608 /* 2^23 */,
-                    1 /* the number of hash functions used */,
-                    bitSet);
+            int size = codesFilter.size();
+            if (size > Integer.MAX_VALUE / 2) {
+                log.warn("bloom filter is already full");
+                return false;
+            }
+            log.info("recreate bloom filter with capacity {}", size);
         }
 
         return true;
@@ -119,6 +117,7 @@ public class DefaultCodeStrategy implements CodeStrategy {
             codePrefixIndex.createNewFile();
             return codePrefixIndex.exists();
         } catch (IOException e) {
+            e.printStackTrace();
             log.warn("create file {} error {}", codePrefixIndex, e.getMessage());
         }
         return false;
@@ -129,24 +128,28 @@ public class DefaultCodeStrategy implements CodeStrategy {
         return prefixIndex;
     }
 
-    static final int MAX_RETRY_TIMES = 10;
+    static final int MAX_RETRY_TIMES = 100;
+    static final int WARN_RETRY_TIMES = 5;
     static final int CACHE_CODES_NUM = 1000;
 
     SecureRandom secureRandom = new SecureRandom();
     Queue<Integer> availableCodes = new ArrayDeque<Integer>(CACHE_CODES_NUM);
 
     @Override
-    public int nextRandomCode() {
+    public int next() {
         if (availableCodes.isEmpty()) generate();
 
         return availableCodes.poll();
     }
 
     @Override
-    public void release() {
-        if (fileOutputStream != null) writeBitSetToFile();
+    public synchronized void release() {
+        if (fileOutputStream == null) return;
+
+        writeBitSetToFile();
         Serializes.closeQuietly(fileOutputStream);
-        if (fileLock != null) fileLock.destroy();
+        fileOutputStream = null;
+        fileLock.destroy();
     }
 
     private void generate() {
@@ -169,13 +172,13 @@ public class DefaultCodeStrategy implements CodeStrategy {
 
             for (int size = minRandomSize; found && size <= maxRandomSize; ++size) {
                 code = secureRandom.nextInt(max(size));
-                found = codesFilter.mightContain(code);
+                found = codesFilter.add(code);
             }
 
             if (!found) {
-                codesFilter.add(code);
-                if (retryTimes > 1)
-                    log.info("get available code {} with {} times with prefix {}", code, retryTimes, prefix());
+                if (retryTimes > WARN_RETRY_TIMES)
+                    log.debug("get available code {} with {} times with prefix {}", code, retryTimes, prefix());
+
                 return code;
             }
         }
@@ -203,8 +206,8 @@ public class DefaultCodeStrategy implements CodeStrategy {
         }
     }
 
-    private void writeBitSetToFile() {
-        Serializes.writeObject(fileOutputStream, codesFilter.getBitSet());
+    private synchronized void writeBitSetToFile() {
+        Serializes.writeObject(fileOutputStream, codesFilter);
     }
 
 }

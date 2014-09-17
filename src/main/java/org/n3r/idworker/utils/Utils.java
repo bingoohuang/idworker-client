@@ -1,9 +1,6 @@
 package org.n3r.idworker.utils;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -102,5 +99,14 @@ public class Utils {
         s.append(str);
 
         return s.toString();
+    }
+
+    public static File createIdWorkerHome() {
+        String userHome = System.getProperty("user.home");
+        File idWorkerHome = new File(userHome + File.separator + ".idworkers");
+        idWorkerHome.mkdirs();
+        if (idWorkerHome.isDirectory()) return idWorkerHome;
+
+        throw new RuntimeException("failed to create .idworkers at user home");
     }
 }

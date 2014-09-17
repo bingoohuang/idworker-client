@@ -3,6 +3,7 @@ package org.n3r.idworker;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.n3r.idworker.strategy.DefaultWorkerIdStrategy;
+import org.n3r.idworker.utils.Utils;
 
 import java.io.File;
 
@@ -11,8 +12,7 @@ import static org.junit.Assert.assertTrue;
 public class DefaultWorkerIdStrategyTest {
     @BeforeClass
     public static void beforeClass() {
-        String pathname = System.getProperty("user.home") + File.separator + ".idworkers";
-        File dir = new File(pathname);
+        File dir = Utils.createIdWorkerHome();
         if (dir.exists()) {
             for (File f : dir.listFiles()) {
                 f.delete();

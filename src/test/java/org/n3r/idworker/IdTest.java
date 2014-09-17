@@ -5,6 +5,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.n3r.idworker.strategy.DefaultWorkerIdStrategy;
 import org.n3r.idworker.utils.Ip;
+import org.n3r.idworker.utils.Utils;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,17 +17,14 @@ import static org.junit.Assert.assertThat;
 public class IdTest {
     @BeforeClass
     public static void beforeClass() {
-        String pathname = System.getProperty("user.home") + File.separator + ".idworkers";
-        File dir = new File(pathname);
-        dir.mkdir();
-
+        File dir = Utils.createIdWorkerHome();
         for (File f : dir.listFiles()) {
             f.delete();
         }
 
         String ipdotlock = Ip.ip + "." + System.getProperty("user.name") + ".lock.0112";
         try {
-            new File(pathname, ipdotlock).createNewFile();
+            new File(dir, ipdotlock).createNewFile();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -44,7 +42,6 @@ public class IdTest {
 
     @Test
     public void test() {
-        System.out.println(System.getProperty("user.name"));
         BigInteger bigInteger = new BigInteger("111111111100000000000", 2);
         long workerMask = bigInteger.longValue();
 

@@ -1,6 +1,7 @@
 package org.n3r.idworker.utils;
 
 import java.io.*;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,8 +65,12 @@ public class Serializes {
     }
 
     public static void writeObject(FileOutputStream fos, Object object) {
+        FileChannel channel = fos.getChannel();
+        if (!channel.isOpen()) throw new RuntimeException("channel is closed");
+
         try {
-            fos.getChannel().position(0);
+
+            channel.position(0);
             ObjectOutputStream objectOutput = new ObjectOutputStream(fos);
             objectOutput.writeObject(object);
             fos.flush();
