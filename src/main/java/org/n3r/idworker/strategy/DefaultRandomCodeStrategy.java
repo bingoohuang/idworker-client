@@ -1,14 +1,11 @@
 package org.n3r.idworker.strategy;
 
 import org.n3r.idworker.RandomCodeStrategy;
-import org.n3r.idworker.utils.Serializes;
 import org.n3r.idworker.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.ArrayDeque;
@@ -16,7 +13,6 @@ import java.util.BitSet;
 import java.util.Queue;
 
 public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
-    static final int MAX_PREFIX_INDEX = Integer.MAX_VALUE;
     public static final int MAX_BITS = 16777216;
 
     Logger log = LoggerFactory.getLogger(DefaultRandomCodeStrategy.class);
@@ -24,7 +20,6 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
     File idWorkerHome = Utils.createIdWorkerHome();
     volatile FileLock fileLock;
     BitSet codesFilter;
-    volatile FileOutputStream fileOutputStream;
 
     int prefixIndex = -1;
     File codePrefixIndex;
@@ -40,12 +35,11 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
     public void init() {
         release();
 
-        while (++prefixIndex < MAX_PREFIX_INDEX) {
-            if (tryUsePrefix()) break;
+        while (++prefixIndex < 1024) {
+            if (tryUsePrefix()) return;
         }
 
-        if (prefixIndex == MAX_PREFIX_INDEX)
-            throw new RuntimeException("all prefixes are used up, the world maybe ends!");
+        throw new RuntimeException("all prefixes are used up, the world maybe ends!");
     }
 
     public DefaultRandomCodeStrategy setMinRandomSize(int minRandomSize) {
@@ -67,8 +61,6 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
 
         log.info("get available prefix index {}", prefixIndex);
 
-        createFileOut();
-
         return true;
     }
 
@@ -78,17 +70,8 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
         return fileLock.tryLock();
     }
 
-    private void createFileOut() {
-        Serializes.closeQuietly(fileOutputStream);
-        try {
-            fileOutputStream = new FileOutputStream(codePrefixIndex);
-        } catch (FileNotFoundException e) {
-            // ignore
-        }
-    }
-
     private boolean createBloomFilter() {
-        codesFilter = Serializes.readObject(codePrefixIndex);
+        codesFilter = fileLock.readObject();
         if (codesFilter == null) {
             log.info("create new bloom filter");
             codesFilter = new BitSet(MAX_BITS); // 2^24
@@ -143,19 +126,18 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
 
     @Override
     public synchronized void release() {
-        if (fileOutputStream == null) return;
-
-        writeBitSetToFile();
-        Serializes.closeQuietly(fileOutputStream);
-        fileOutputStream = null;
-        fileLock.destroy();
+        if (fileLock != null) {
+            fileLock.writeObject(codesFilter);
+            fileLock.destroy();
+            fileLock = null;
+        }
     }
 
     private void generate() {
         for (int i = 0; i < CACHE_CODES_NUM; ++i)
             availableCodes.add(generateOne());
 
-        writeBitSetToFile();
+        fileLock.writeObject(codesFilter);
     }
 
     private int generateOne() {
@@ -220,9 +202,4 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
                 return Integer.MAX_VALUE;
         }
     }
-
-    private synchronized void writeBitSetToFile() {
-        Serializes.writeObject(fileOutputStream, codesFilter);
-    }
-
 }

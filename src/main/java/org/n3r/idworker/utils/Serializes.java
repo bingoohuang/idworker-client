@@ -29,6 +29,7 @@ public class Serializes {
         return objects;
     }
 
+
     @SuppressWarnings("unchecked")
     public static <T> T readObject(File file) {
         ObjectInputStream objectReader = null;
@@ -69,7 +70,6 @@ public class Serializes {
         if (!channel.isOpen()) throw new RuntimeException("channel is closed");
 
         try {
-
             channel.position(0);
             ObjectOutputStream objectOutput = new ObjectOutputStream(fos);
             objectOutput.writeObject(object);

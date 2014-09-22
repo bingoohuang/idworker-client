@@ -4,9 +4,8 @@ package org.n3r.idworker.strategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.*;
+import java.nio.channels.Channels;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.OverlappingFileLockException;
@@ -91,11 +90,43 @@ public class FileLock {
     public void destroy() {
         synchronized (this) {
             unlock();
+            if (!channel.isOpen()) return;
+
             try {
                 channel.close();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+
+    @SuppressWarnings("unchecked")
+    public <T> T readObject() {
+        try {
+            InputStream is = Channels.newInputStream(channel);
+            ObjectInputStream objectReader = new ObjectInputStream(is);
+            return (T) objectReader.readObject();
+        } catch (EOFException e) {
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        return null;
+    }
+
+
+    public synchronized boolean writeObject(Object object) {
+        if (!channel.isOpen()) return false;
+
+        try {
+            channel.position(0);
+            OutputStream out = Channels.newOutputStream(channel);
+            ObjectOutputStream objectOutput = new ObjectOutputStream(out);
+            objectOutput.writeObject(object);
+            return true;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 }
