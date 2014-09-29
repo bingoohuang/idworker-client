@@ -1,5 +1,6 @@
 package org.n3r.idworker.strategy;
 
+import org.n3r.idworker.Id;
 import org.n3r.idworker.RandomCodeStrategy;
 import org.n3r.idworker.utils.Utils;
 import org.slf4j.Logger;
@@ -53,7 +54,7 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
     }
 
     protected boolean tryUsePrefix() {
-        codePrefixIndex = new File(idWorkerHome, "code.prefix." + prefixIndex);
+        codePrefixIndex = new File(idWorkerHome, Id.getWorkerId() + ".code.prefix." + prefixIndex);
 
         if (!createPrefixIndexFile()) return false;
         if (!createFileLock()) return false;
@@ -142,15 +143,15 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
 
     private int generateOne() {
         while (true) {
-            boolean found = true;
+            boolean existed = true;
             int code = -1;
 
-            for (int size = minRandomSize; found && size <= maxRandomSize; ++size) {
+            for (int size = minRandomSize; existed && size <= maxRandomSize; ++size) {
                 code = secureRandom.nextInt(max(size));
-                found = contains(code);
+                existed = contains(code);
             }
 
-            code = !found ? add(code) : tryFindAvailableCode(code);
+            code = !existed ? add(code) : tryFindAvailableCode(code);
             if (code >= 0) return code;
 
             init();
