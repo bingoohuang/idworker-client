@@ -154,15 +154,11 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
     }
 
     private int tryFindAvailableCode(int code) {
-        for (int i = code + 1; i < max(maxRandomSize); ++i) {
-            if (contains(i)) continue;
-            return add(i);
-        }
+        int next = codesFilter.nextClearBit(code);
+        if (next < max(maxRandomSize)) return add(next);
 
-        for (int i = 0; i < code; ++i) {
-            if (contains(i)) continue;
-            return add(i);
-        }
+        next = codesFilter.previousClearBit(code);
+        if (next >= 0) return add(next);
 
         return -1;
     }
