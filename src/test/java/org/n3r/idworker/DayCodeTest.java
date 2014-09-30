@@ -9,7 +9,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 public class DayCodeTest {
-    static final int CAPACITY = 1000;
+    static final int CAPACITY = 1;
 
     @Test
     public void test() {

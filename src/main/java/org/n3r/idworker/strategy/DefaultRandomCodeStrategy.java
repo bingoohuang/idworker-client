@@ -14,7 +14,7 @@ import java.util.BitSet;
 import java.util.Queue;
 
 public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
-    public static final int MAX_BITS = 1048576;
+    public static final int MAX_BITS = 1000000;
 
     Logger log = LoggerFactory.getLogger(DefaultRandomCodeStrategy.class);
 
@@ -60,7 +60,7 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
         if (!createFileLock()) return false;
         if (!createBloomFilter()) return false;
 
-        log.info("get available prefix index {}", prefixIndex);
+        log.info("get available prefix index file {}", codePrefixIndex);
 
         return true;
     }
@@ -78,11 +78,11 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
             codesFilter = new BitSet(MAX_BITS); // 2^24
         } else {
             int size = codesFilter.cardinality();
-            if (size > 999999) {
-                log.warn("bloom filter is already full");
+            if (size >= MAX_BITS) {
+                log.warn("bloom filter with prefix file {} is already full", codePrefixIndex);
                 return false;
             }
-            log.info("recreate bloom filter with capacity {}", size);
+            log.info("recreate bloom filter with cardinality {}", size);
         }
 
         return true;
