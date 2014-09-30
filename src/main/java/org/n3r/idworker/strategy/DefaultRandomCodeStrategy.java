@@ -14,7 +14,7 @@ import java.util.BitSet;
 import java.util.Queue;
 
 public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
-    public static final int MAX_BITS = 16777216;
+    public static final int MAX_BITS = 1048576;
 
     Logger log = LoggerFactory.getLogger(DefaultRandomCodeStrategy.class);
 
@@ -25,8 +25,8 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
     int prefixIndex = -1;
     File codePrefixIndex;
 
-    int minRandomSize = 5;
-    int maxRandomSize = 10;
+    int minRandomSize = 6;
+    int maxRandomSize = 6;
 
     public DefaultRandomCodeStrategy() {
         destroyFileLockWhenShutdown();
@@ -36,7 +36,7 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
     public void init() {
         release();
 
-        while (++prefixIndex < 1024) {
+        while (++prefixIndex < 1000) {
             if (tryUsePrefix()) return;
         }
 
@@ -78,7 +78,7 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
             codesFilter = new BitSet(MAX_BITS); // 2^24
         } else {
             int size = codesFilter.cardinality();
-            if (size > 16000000) {
+            if (size > 999999) {
                 log.warn("bloom filter is already full");
                 return false;
             }
@@ -143,13 +143,8 @@ public class DefaultRandomCodeStrategy implements RandomCodeStrategy {
 
     private int generateOne() {
         while (true) {
-            boolean existed = true;
-            int code = -1;
-
-            for (int size = minRandomSize; existed && size <= maxRandomSize; ++size) {
-                code = secureRandom.nextInt(max(size));
-                existed = contains(code);
-            }
+            int code = secureRandom.nextInt(max(maxRandomSize));
+            boolean existed = contains(code);
 
             code = !existed ? add(code) : tryFindAvailableCode(code);
             if (code >= 0) return code;

@@ -29,6 +29,6 @@ public class Code {
         int prefix = strategy.prefix();
         if (prefix == 0) return Id.getWorkerId() + "-" + strategy.next();
 
-        return String.format("%d-%d-%d", Id.getWorkerId(), prefix, strategy.next());
+        return String.format("%d-%03d-%06d", Id.getWorkerId(), prefix, strategy.next());
     }
 }
