@@ -29,7 +29,7 @@ public class Code {
         long workerId = Id.getWorkerId();
         int prefix = strategy.prefix();
         int next = strategy.next();
-        
+
         return String.format("%d-%03d-%06d", workerId, prefix, next);
     }
 }
