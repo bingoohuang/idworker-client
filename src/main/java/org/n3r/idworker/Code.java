@@ -26,9 +26,10 @@ public class Code {
      * @return unique string code.
      */
     public static synchronized String next() {
+        long workerId = Id.getWorkerId();
         int prefix = strategy.prefix();
-        if (prefix == 0) return Id.getWorkerId() + "-" + strategy.next();
-
-        return String.format("%d-%03d-%06d", Id.getWorkerId(), prefix, strategy.next());
+        int next = strategy.next();
+        
+        return String.format("%d-%03d-%06d", workerId, prefix, next);
     }
 }
