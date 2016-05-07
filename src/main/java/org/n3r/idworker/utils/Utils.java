@@ -7,6 +7,8 @@ import java.util.Calendar;
 
 public class Utils {
 
+    public static final String DOT_IDWORKERS = ".idworkers";
+
     public static ClassLoader getClassLoader() {
         ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
         return contextClassLoader != null ? contextClassLoader : Utils.class.getClassLoader();
@@ -103,7 +105,7 @@ public class Utils {
 
     public static File createIdWorkerHome() {
         String userHome = System.getProperty("user.home");
-        File idWorkerHome = new File(userHome + File.separator + ".idworkers");
+        File idWorkerHome = new File(userHome + File.separator + DOT_IDWORKERS);
         idWorkerHome.mkdirs();
         if (idWorkerHome.isDirectory()) return idWorkerHome;
 

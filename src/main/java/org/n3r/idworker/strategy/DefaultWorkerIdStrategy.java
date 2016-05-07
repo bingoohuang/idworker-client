@@ -3,6 +3,7 @@ package org.n3r.idworker.strategy;
 import org.n3r.idworker.WorkerIdStrategy;
 import org.n3r.idworker.utils.HttpReq;
 import org.n3r.idworker.utils.Ip;
+import org.n3r.idworker.utils.Props;
 import org.n3r.idworker.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.security.SecureRandom;
+import java.util.Properties;
 import java.util.Random;
 
 public class DefaultWorkerIdStrategy implements WorkerIdStrategy {
@@ -19,7 +21,10 @@ public class DefaultWorkerIdStrategy implements WorkerIdStrategy {
 
     public static final WorkerIdStrategy instance = new DefaultWorkerIdStrategy();
 
-    private final String idWorkerServerUrl = "http://id.worker.server:18001";
+    private final Properties props =
+            Props.tryProperties("idworker-client.properties", Utils.DOT_IDWORKERS);
+    private final String idWorkerServerUrl =
+            props.getProperty("server.address", "http://id.worker.server:18001");
 
     String userName = System.getProperty("user.name");
 
