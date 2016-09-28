@@ -102,7 +102,7 @@ public class DefaultWorkerIdStrategy implements WorkerIdStrategy {
         long tryTimes = -1;
 
         while (avaiWorkerId < 0 && ++tryTimes < maxWorkerId) {
-            long wid = Ip.lip & random.nextInt((int) maxWorkerId);
+            long wid = 0xff & random.nextInt((int) maxWorkerId);
 
             avaiWorkerId = checkAvail(wid);
         }
@@ -110,10 +110,13 @@ public class DefaultWorkerIdStrategy implements WorkerIdStrategy {
     }
 
     private long checkAvail(long wid) {
+        logger.debug("check availability worker id {}", wid);
         long availWorkerId = -1L;
         try {
             File idWorkerHome = Utils.createIdWorkerHome();
-            new File(idWorkerHome, ipudotlock + String.format("%04d", wid)).createNewFile();
+            File file = new File(idWorkerHome, ipudotlock + String.format("%04d", wid));
+            boolean newFile = file.createNewFile();
+            logger.debug("try create lock file {} with result {}", file.toString(), newFile);
             availWorkerId = findAvailWorkerId();
         } catch (IOException e) {
             logger.warn("checkAvail error", e);

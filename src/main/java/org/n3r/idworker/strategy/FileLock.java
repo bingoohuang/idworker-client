@@ -12,7 +12,6 @@ import java.nio.channels.OverlappingFileLockException;
 
 /**
  * A file lock a la flock/funlock
- * <p/>
  * The given path will be created and opened if it doesn't exist.
  */
 public class FileLock {
@@ -49,6 +48,7 @@ public class FileLock {
 
     /**
      * Try to lock the file and return true if the locking succeeds
+     * @return 成功或失败
      */
     public boolean tryLock() {
         synchronized (this) {

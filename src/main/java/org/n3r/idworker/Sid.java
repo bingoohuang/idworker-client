@@ -43,6 +43,7 @@ public class Sid {
 
     /**
      * 返回固定16位的字母数字混编的字符串。
+     * @return 固定16位的字母数字混编的字符串
      */
     public static String nextShort() {
         long id = idWorker.nextId();
