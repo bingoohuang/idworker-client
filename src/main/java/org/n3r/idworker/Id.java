@@ -5,6 +5,7 @@ import org.n3r.idworker.strategy.DefaultWorkerIdStrategy;
 public class Id {
     private static WorkerIdStrategy workerIdStrategy;
     private static IdWorker idWorker;
+    private static IdWorkerInt idWorkerInt;
 
     static {
         configure(DefaultWorkerIdStrategy.instance);
@@ -16,11 +17,17 @@ public class Id {
         if (workerIdStrategy != null) workerIdStrategy.release();
         workerIdStrategy = custom;
         workerIdStrategy.initialize();
-        idWorker = new IdWorker(workerIdStrategy.availableWorkerId());
+        long availableWorkerId = workerIdStrategy.availableWorkerId();
+        idWorker = new IdWorker(availableWorkerId);
+        idWorkerInt = new IdWorkerInt(availableWorkerId & (~(-1L << 5L)));
     }
 
     public static long next() {
         return idWorker.nextId();
+    }
+
+    public static int nextInt() {
+        return idWorkerInt.nextIdInt();
     }
 
     public static long getWorkerId() {
