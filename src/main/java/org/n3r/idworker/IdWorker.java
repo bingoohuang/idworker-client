@@ -8,13 +8,13 @@ import java.security.SecureRandom;
 public class IdWorker {
     protected long epoch = 1387886498127L; // 2013-12-24 20:01:38.127
 
-    protected long workerIdBits = 10L;
-    protected long maxWorkerId = -1L ^ (-1L << workerIdBits);
-    protected long sequenceBits = 11L;
+    protected long workerIdBits;
+    protected long maxWorkerId;
+    protected long sequenceBits;
 
-    protected long workerIdShift = sequenceBits;
-    protected long timestampLeftShift = sequenceBits + workerIdBits;
-    protected long sequenceMask = -1L ^ (-1L << sequenceBits);
+    protected long workerIdShift;
+    protected long timestampLeftShift;
+    protected long sequenceMask;
 
     protected long lastMillis = -1L;
 
@@ -23,6 +23,14 @@ public class IdWorker {
     protected Logger logger = LoggerFactory.getLogger(IdWorker.class);
 
     public IdWorker(long workerId) {
+        workerIdBits = workerIdBits();
+        maxWorkerId = -1L ^ (-1L << workerIdBits);
+        sequenceBits = sequenceBits();
+
+        workerIdShift = sequenceBits;
+        timestampLeftShift = sequenceBits + workerIdBits;
+        sequenceMask = -1L ^ (-1L << sequenceBits);
+
         this.workerId = checkWorkerId(workerId);
 
         logger.debug("worker starting. timestamp left shift {}, worker id bits {}, sequence bits {}, worker id {}",
@@ -31,6 +39,14 @@ public class IdWorker {
 
     public long getEpoch() {
         return epoch;
+    }
+
+    public long workerIdBits() {
+        return 10L;
+    }
+
+    public long sequenceBits() {
+        return 11L;
     }
 
     private long checkWorkerId(long workerId) {
